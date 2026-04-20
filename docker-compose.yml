@@ -1,0 +1,24 @@
+version: "3.9"
+
+services:
+  # ─── Backend: FastAPI + ML Engine ───
+  backend:
+    build: ./backend
+    container_name: sentinel-backend
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/app/datasets:/app/app/datasets   # mount datasets from host
+    environment:
+      - SECRET_KEY=sentinel-v3-change-me-in-prod
+    restart: unless-stopped
+
+  # ─── Frontend: Vite React (served via nginx) ───
+  frontend:
+    build: ./frontend
+    container_name: sentinel-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

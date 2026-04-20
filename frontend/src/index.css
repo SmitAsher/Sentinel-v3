@@ -1,0 +1,15 @@
+/* ─── Global Reset for Sentinel-v3 ─── */
+*,
+*::before,
+*::after {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  width: 100%;
+  min-height: 100vh;
+  background: #0a0e17;
+  color: #e5e7eb;
+}

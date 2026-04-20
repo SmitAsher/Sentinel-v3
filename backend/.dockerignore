@@ -1,0 +1,5 @@
+__pycache__
+*.pyc
+.git
+app/datasets/*.csv
+app/ml/rf_model.pkl
