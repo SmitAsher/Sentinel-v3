@@ -3,8 +3,8 @@
  * Connects the React frontend to the FastAPI backend
  */
 
-const DEV_API  = "http://localhost:8000/api";
-const DEV_WS   = "ws://localhost:8000/api";
+const DEV_API  = "http://127.0.0.1:8000/api";
+const DEV_WS   = "ws://127.0.0.1:8000/api";
 
 // In production (Docker), nginx proxies /api/ to the backend
 const isProd   = import.meta.env.PROD;
