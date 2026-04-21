@@ -25,8 +25,12 @@
 
 body {
   font-family: 'Inter', system-ui, sans-serif;
-  background: var(--bg-primary);
-  background-image: radial-gradient(circle at 50% -20%, rgba(100, 0, 0, 0.15), var(--bg-primary) 60%);
+  background-color: var(--bg-primary);
+  background-image: 
+    linear-gradient(rgba(220, 38, 38, 0.04) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(220, 38, 38, 0.04) 1px, transparent 1px),
+    radial-gradient(circle at 50% -20%, rgba(150, 0, 0, 0.25), var(--bg-primary) 60%);
+  background-size: 30px 30px, 30px 30px, 100% 100%;
   color: var(--text-primary);
   min-height: 100vh;
   overflow-x: hidden;
@@ -38,10 +42,10 @@ body {
   align-items: center;
   justify-content: space-between;
   padding: 0.5rem 1.5rem;
-  background: rgba(10, 0, 0, 0.8);
-  backdrop-filter: blur(8px);
+  background: rgba(10, 0, 0, 0.85);
+  backdrop-filter: blur(12px);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  box-shadow: 0 4px 15px rgba(220,38,38,0.1);
   position: sticky;
   top: 0;
   z-index: 100;
@@ -54,8 +58,13 @@ body {
   align-items: center;
   gap: 0.5rem;
   color: #ff4444;
-  text-shadow: 0 0 10px rgba(255, 68, 68, 0.4);
+  text-shadow: 0 0 10px rgba(255, 68, 68, 0.8);
+  animation: textFlicker 3s infinite alternate;
   cursor: pointer;
+}
+@keyframes textFlicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { text-shadow: 0 0 10px rgba(255, 68, 68, 0.8), 0 0 20px rgba(255, 68, 68, 0.4); }
+  20%, 24%, 55% { text-shadow: none; }
 }
 .nav-links { display: flex; gap: 0.5rem; }
 .nav-links button {

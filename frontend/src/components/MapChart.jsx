@@ -23,21 +23,23 @@ const nameToIso = {
 };
 
 export default function MapChart({ events }) {
-  const { regionCounts } = useGlobalStream();
+  const { srcCounts, dstCounts } = useGlobalStream();
   const [tooltip, setTooltip] = useState(null);
 
   const handleCountryClick = (geo, evt) => {
     const name = geo.properties?.name || "Unknown";
     // world-atlas 110m json often lacks iso_a2, use our mapping as a fallback
     const iso2 = geo.properties?.iso_a2 || geo.properties?.ISO_A2 || nameToIso[name] || "??";
-    const count = regionCounts[iso2] || 0;
+    const originating = srcCounts[iso2] || 0;
+    const targeted = dstCounts[iso2] || 0;
     
     // Position tooltip near the click
     const rect = evt.target.getBoundingClientRect();
     setTooltip({
       name,
       iso2,
-      count,
+      originating,
+      targeted,
       x: evt.clientX - rect.left + 20,
       y: evt.clientY - rect.top + 20
     });
@@ -61,7 +63,10 @@ export default function MapChart({ events }) {
             <span style={{ cursor: "pointer", color: "#dc2626" }} onClick={() => setTooltip(null)}>✕</span>
           </div>
           <div style={{ fontSize: "0.8rem", color: "#fca5a5" }}>
-            Attacks Originating/Targeted: <strong style={{ color: "#ef4444", fontSize: "1.2rem" }}>{tooltip.count}</strong>
+            Originating: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{tooltip.originating}</strong>
+          </div>
+          <div style={{ fontSize: "0.8rem", color: "#fca5a5" }}>
+            Targeted: <strong style={{ color: "#ef4444", fontSize: "1.1rem" }}>{tooltip.targeted}</strong>
           </div>
         </div>
       )}
@@ -71,7 +76,7 @@ export default function MapChart({ events }) {
           {({ geographies }) =>
             geographies.map((geo) => {
               const iso2 = geo.properties?.iso_a2 || geo.properties?.ISO_A2;
-              const hasActivity = regionCounts[iso2] > 0;
+              const hasActivity = (srcCounts[iso2] > 0) || (dstCounts[iso2] > 0);
               
               return (
                 <Geography
@@ -101,6 +106,10 @@ export default function MapChart({ events }) {
           
           if (!startCoords) return null;
           
+          // Anti-meridian crossing protection: if longitude difference is greater than 160 degrees, 
+          // don't draw the line so it doesn't look like it's randomly originating straight across the air/SVG.
+          const drawsLine = endCoords && srcIso !== dstIso && (Math.abs(startCoords[0] - endCoords[0]) < 160);
+          
           // Determine color based on ML classification
           let color = "#ef4444"; // default red
           if (ev.ml_classification?.toLowerCase() === "benign") color = "#22c55e"; // green
@@ -115,7 +124,7 @@ export default function MapChart({ events }) {
               </Marker>
               
               {/* Arc to Destination (if it exists and is different) */}
-              {endCoords && (srcIso !== dstIso) && (
+              {drawsLine && (
                 <>
                   <Line
                     from={startCoords}

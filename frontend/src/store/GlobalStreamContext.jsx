@@ -14,7 +14,8 @@ export function GlobalStreamProvider({ children }) {
     observables: 0
   });
 
-  const [regionCounts, setRegionCounts] = useState({});
+  const [srcCounts, setSrcCounts] = useState({});
+  const [dstCounts, setDstCounts] = useState({});
   const [mlCounts, setMlCounts] = useState({});
   const [protocolCounts, setProtocolCounts] = useState({});
   const [portCounts, setPortCounts] = useState({});
@@ -38,9 +39,14 @@ export function GlobalStreamProvider({ children }) {
         observables: prev.observables + event.packet_length
       }));
 
-      const country = event.geo?.src_country;
-      if (country && country !== "Unknown") {
-        setRegionCounts((prev) => ({ ...prev, [country]: (prev[country] || 0) + 1 }));
+      const srcCountry = event.geo?.src_country;
+      if (srcCountry && srcCountry !== "Unknown") {
+        setSrcCounts((prev) => ({ ...prev, [srcCountry]: (prev[srcCountry] || 0) + 1 }));
+      }
+
+      const dstCountry = event.geo?.dst_country;
+      if (dstCountry && dstCountry !== "Unknown") {
+        setDstCounts((prev) => ({ ...prev, [dstCountry]: (prev[dstCountry] || 0) + 1 }));
       }
 
       const mlClass = event.ml_classification;
@@ -70,7 +76,7 @@ export function GlobalStreamProvider({ children }) {
 
   return (
     <GlobalStreamContext.Provider value={{
-      events, stats, regionCounts, mlCounts, protocolCounts, portCounts
+      events, stats, srcCounts, dstCounts, mlCounts, protocolCounts, portCounts
     }}>
       {children}
     </GlobalStreamContext.Provider>

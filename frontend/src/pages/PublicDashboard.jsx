@@ -6,10 +6,10 @@ import { useGlobalStream } from "../store/GlobalStreamContext";
 import "../App.css";
 
 export default function PublicDashboard() {
-  const { events, stats, regionCounts, mlCounts, protocolCounts, portCounts } = useGlobalStream();
+  const { events, stats, srcCounts, mlCounts, protocolCounts, portCounts } = useGlobalStream();
 
   // Format Data for Charts
-  const regionData = Object.entries(regionCounts)
+  const regionData = Object.entries(srcCounts)
     .sort((a,b) => b[1] - a[1])
     .slice(0, 5)
     .map(([k,v]) => ({ name: k, value: v }));
