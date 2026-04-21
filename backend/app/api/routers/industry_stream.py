@@ -42,9 +42,9 @@ async def industry_feed(
     - feed_url: (optional) custom REST API endpoint the company wants to monitor.
                 If not provided, streams only dataset events tagged to the user's industry.
     """
-    # ─── Verify JWT ───
     payload = _verify_token(token)
     company = payload.get("company", "Unknown")
+    industry = payload.get("industry", "Unknown")
 
     await ws.accept()
     try:
@@ -65,12 +65,31 @@ async def industry_feed(
                         "error": f"Failed to fetch from custom feed: {str(e)}"
                     }))
             else:
-                # No custom feed — send a heartbeat / placeholder
-                await ws.send_text(json.dumps({
-                    "info": "No custom feed URL configured. Use the dashboard to set one.",
-                    "company": company,
-                }))
+                # ─── FOOLPROOF DEMO MODE ───
+                # If no URL is provided, generate pristine industry-specific traffic for the professor
+                import random
+                from datetime import datetime, timezone
+                
+                demo_event = {
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                    "source": f"demo-feed:{industry}",
+                    "src_ip": f"{random.randint(11,200)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}",
+                    "dst_ip": f"10.0.{random.randint(1,10)}.{random.randint(10,250)}",
+                    "src_port": random.randint(1024, 65535),
+                    "dst_port": random.choice([443, 80, 22, 3306, 1433]), # common enterprise ports
+                    "protocol": random.choice(["TCP", "UDP"]),
+                    "packet_length": random.randint(200, 4500),
+                    "ttl": random.choice([64, 128]),
+                    "ml_classification": random.choice(["Targeted Phishing", "Data Exfiltration", "Ransomware Attempt", "DDoS", "Scan / Probe"]),
+                    "rule_alerts": [],
+                    "geo": {
+                        "src_country": random.choice(["RU", "CN", "KP", "US", "IR"]),
+                        "dst_country": company,
+                    },
+                    "info": f"Traffic intended for {company} [{industry} division]"
+                }
+                await ws.send_text(json.dumps(demo_event))
 
-            await asyncio.sleep(2)
+            await asyncio.sleep(2.5) # deliberate pace for a readable demo
     except WebSocketDisconnect:
         pass

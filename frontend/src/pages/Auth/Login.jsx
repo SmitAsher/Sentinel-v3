@@ -1,6 +1,3 @@
-/**
- * Login Page — JWT Authentication for Industry Dashboard Access
- */
 import { useState } from "react";
 import { login, register } from "../../services/api";
 
@@ -28,25 +25,48 @@ export default function Login({ onAuth }) {
 
   return (
     <div className="auth-page">
-      <form className="auth-form" onSubmit={handleSubmit}>
-        <h2>{isRegister ? "Register Your Company" : "Industry Login"}</h2>
-        {error && <p className="auth-error">{error}</p>}
+      <div className="auth-glass-panel">
+        <div className="auth-header">
+          <div className="auth-icon">🔐</div>
+          <h2>{isRegister ? "SYSTEM REGISTRATION" : "INDUSTRY CLEARANCE"}</h2>
+          <p>{isRegister ? "Request Sentinel Access" : "Authorized Personnel Only"}</p>
+        </div>
 
-        <input placeholder="Username" value={username} onChange={(e) => setUsername(e.target.value)} required />
-        <input placeholder="Password" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+        <form className="auth-form" onSubmit={handleSubmit}>
+          {error && <div className="auth-error">⚠️ {error}</div>}
 
-        {isRegister && (
-          <>
-            <input placeholder="Company Name" value={company} onChange={(e) => setCompany(e.target.value)} />
-            <input placeholder="Industry (e.g. Finance, Healthcare)" value={industry} onChange={(e) => setIndustry(e.target.value)} />
-          </>
-        )}
+          <div className="input-group">
+            <input placeholder="Operator ID (Username)" value={username} onChange={(e) => setUsername(e.target.value)} required />
+            <div className="input-glow"></div>
+          </div>
+          
+          <div className="input-group">
+            <input placeholder="Passkey" type="password" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <div className="input-glow"></div>
+          </div>
 
-        <button type="submit">{isRegister ? "Register" : "Login"}</button>
-        <p className="auth-toggle" onClick={() => setIsRegister(!isRegister)}>
-          {isRegister ? "Already have an account? Login" : "Need an account? Register"}
-        </p>
-      </form>
+          {isRegister && (
+            <div className="register-fields-slide">
+              <div className="input-group">
+                <input placeholder="Organization / Company" value={company} onChange={(e) => setCompany(e.target.value)} required />
+                <div className="input-glow"></div>
+              </div>
+              <div className="input-group">
+                <input placeholder="Sector (e.g. Finance, Health)" value={industry} onChange={(e) => setIndustry(e.target.value)} required />
+                <div className="input-glow"></div>
+              </div>
+            </div>
+          )}
+
+          <button type="submit" className="auth-submit-btn">
+            {isRegister ? "INITIATE REGISTRATION" : "AUTHENTICATE"}
+          </button>
+          
+          <div className="auth-toggle" onClick={() => setIsRegister(!isRegister)}>
+            {isRegister ? "« Return to Login" : "Request Clearance »"}
+          </div>
+        </form>
+      </div>
     </div>
   );
 }

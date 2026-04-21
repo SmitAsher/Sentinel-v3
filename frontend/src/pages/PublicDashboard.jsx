@@ -1,73 +1,12 @@
-import { useEffect, useState, useRef } from "react";
-import { connectGlobalStream } from "../services/api";
+import React from "react";
 import MapChart from "../components/MapChart";
 import DonutChart from "../components/DonutChart";
 import BarChartWidget from "../components/BarChartWidget";
+import { useGlobalStream } from "../store/GlobalStreamContext";
 import "../App.css";
 
 export default function PublicDashboard() {
-  const [events, setEvents] = useState([]);
-  
-  // Aggregated Stats
-  const [stats, setStats] = useState({
-    threatActors: 0,
-    intrusionSets: 0,
-    campaigns: 0,
-    malware: 0,
-    indicators: 0,
-    observables: 0
-  });
-
-  const [regionCounts, setRegionCounts] = useState({});
-  const [mlCounts, setMlCounts] = useState({});
-  const [protocolCounts, setProtocolCounts] = useState({});
-  const [portCounts, setPortCounts] = useState({});
-
-  const wsRef = useRef(null);
-
-  useEffect(() => {
-    wsRef.current = connectGlobalStream((event) => {
-      setEvents((prev) => [event, ...prev].slice(0, 50));
-      
-      // Update basic counters safely
-      setStats((prev) => ({
-        threatActors: prev.threatActors + (event.rule_alerts?.length > 0 ? 1 : 0),
-        intrusionSets: prev.intrusionSets + (event.geo?.src_country ? 1 : 0),
-        campaigns: prev.campaigns + (event.protocol === "TCP" ? 1 : 0),
-        malware: prev.malware + (event.ml_classification === "Malware" ? 1 : 0),
-        indicators: prev.indicators + 1,
-        observables: prev.observables + event.packet_length
-      }));
-
-      // Aggregate region (countries)
-      const country = event.geo?.src_country;
-      if (country && country !== "Unknown") {
-        setRegionCounts((prev) => ({ ...prev, [country]: (prev[country] || 0) + 1 }));
-      }
-
-      // Aggregate ML class
-      const mlClass = event.ml_classification;
-      if (mlClass) {
-        setMlCounts((prev) => ({ ...prev, [mlClass]: (prev[mlClass] || 0) + 1 }));
-      }
-
-      // Aggregate protocols
-      const proto = event.protocol;
-      if (proto) {
-        setProtocolCounts((prev) => ({ ...prev, [proto]: (prev[proto] || 0) + 1 }));
-      }
-
-      // Aggregate Destination Ports
-      const dport = event.dst_port;
-      if (dport) {
-        setPortCounts((prev) => ({ ...prev, [dport]: (prev[dport] || 0) + 1 }));
-      }
-
-    }, (error) => {
-        console.error("WS Error:", error);
-    });
-    return () => wsRef.current?.close();
-  }, []);
+  const { events, stats, regionCounts, mlCounts, protocolCounts, portCounts } = useGlobalStream();
 
   // Format Data for Charts
   const regionData = Object.entries(regionCounts)
@@ -77,11 +16,13 @@ export default function PublicDashboard() {
 
   const malwareData = Object.entries(mlCounts)
     .map(([k,v]) => ({ name: k, value: v }));
-  const malwareColors = ['#ef4444', '#3b82f6', '#10b981', '#f59e0b'];
+  
+  // Adjusted colors for hacker aesthetic
+  const malwareColors = ['#dc2626', '#b91c1c', '#f87171', '#991b1b', '#ef4444'];
 
   const toolsData = Object.entries(protocolCounts)
     .map(([k,v]) => ({ name: k, value: v }));
-  const toolsColors = ['#8b5cf6', '#06b6d4', '#ec4899', '#f97316'];
+  const toolsColors = ['#ef4444', '#7f1d1d', '#fca5a5', '#450a0a'];
 
   const sectorData = Object.entries(portCounts)
     .sort((a,b) => b[1] - a[1])
@@ -112,26 +53,26 @@ export default function PublicDashboard() {
           <div className="m-val">{stats.indicators}</div>
         </div>
         <div className="metric-card">
-          <div className="m-label">OBSERVABLES (bytes)</div>
+          <div className="m-label">OBSERVABLES (BYTES)</div>
           <div className="m-val">{stats.observables > 1000 ? (stats.observables/1000).toFixed(1) + 'K' : stats.observables}</div>
         </div>
       </div>
 
       <div className="middle-grid">
-        <BarChartWidget title="TOP COUNTRIES" data={regionData.length ? regionData : [{name: 'Waiting...', value: 0}]} color="#84cc16" />
+        <BarChartWidget title="TOP COUNTRIES" data={regionData.length ? regionData : [{name: 'Waiting...', value: 0}]} color="#dc2626" />
         <MapChart events={events} />
         <DonutChart title="ATTACK TYPES" data={malwareData.length ? malwareData : [{name: 'Waiting...', value: 1}]} colors={malwareColors} />
       </div>
 
       <div className="bottom-grid">
-        <BarChartWidget title="TARGETED PORTS" data={sectorData.length ? sectorData : [{name: 'Waiting...', value: 0}]} color="#3b82f6" />
+        <BarChartWidget title="TARGETED PORTS" data={sectorData.length ? sectorData : [{name: 'Waiting...', value: 0}]} color="#ef4444" />
         
         <div className="chart-container feed-panel">
           <h3 className="panel-title">LIVE THREAT FEED</h3>
           <div className="event-list-sm">
             {events.map((ev, i) => (
               <div key={i} className="feed-item">
-                <span className="fi-time">{new Date(ev.timestamp).toLocaleTimeString()}</span>
+                <span className="fi-time">{ev.timestamp ? new Date(ev.timestamp).toLocaleTimeString() : ""}</span>
                 <span className="fi-src">{ev.src_ip}</span>
                 <span className="fi-arrow">→</span>
                 <span className="fi-dst">{ev.dst_ip}</span>
