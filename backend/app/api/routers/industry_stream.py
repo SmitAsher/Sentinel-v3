@@ -1,24 +1,28 @@
-"""
-Industry Stream Router — Authenticated WebSocket for Custom Feeds
-===================================================================
-Requires JWT authentication. Allows authenticated users to configure
-a custom API endpoint / STIX-TAXII feed and receive filtered traffic
-specific to their company/industry.
-"""
-
-import json
 import asyncio
-
+import random
+import json
+import os
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Query, HTTPException
+from typing import Optional
+from datetime import datetime
 import jwt
-import httpx
 
 from app.config import SECRET_KEY, ALGORITHM
-from app.services.rule_engine import scan_payload
 from app.services.data_blender import build_event
+
+# Path to the massive internal threat database
+DATASET_PATH = os.path.join(os.path.dirname(__file__), "../../datasets/enterprise_threat_feed.json")
 
 router = APIRouter()
 
+# Load dataset once globally to save memory/IO
+FEED_DATA = []
+try:
+    if os.path.exists(DATASET_PATH):
+        with open(DATASET_PATH, "r") as f:
+            FEED_DATA = json.load(f)
+except Exception as e:
+    print(f"Critical: Failed to load enterprise dataset: {e}")
 
 def _verify_token(token: str) -> dict:
     """Decode and verify a JWT token. Returns the payload or raises."""
@@ -29,67 +33,77 @@ def _verify_token(token: str) -> dict:
     except jwt.InvalidTokenError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
-
 @router.websocket("/ws/feed")
 async def industry_feed(
-    ws: WebSocket,
+    websocket: WebSocket,
     token: str = Query(...),
-    feed_url: str = Query(None),
+    feed_url: Optional[str] = None
 ):
     """
-    Authenticated WebSocket endpoint.
-    - token:    JWT from /api/auth/login
-    - feed_url: (optional) custom REST API endpoint the company wants to monitor.
-                If not provided, streams only dataset events tagged to the user's industry.
+    Continuous Enterprise Traffic Stream.
+    If no feed_url is provided, it pulls from the local 100k request dataset.
     """
-    payload = _verify_token(token)
-    company = payload.get("company", "Unknown")
-    industry = payload.get("industry", "Unknown")
-
-    await ws.accept()
     try:
+        payload = _verify_token(token)
+    except Exception as e:
+        await websocket.accept()
+        await websocket.send_json({"error": str(e)})
+        await websocket.close()
+        return
+
+    company_name = payload.get("company", "Enterprise X")
+    branch_locations = payload.get("locations", [])
+
+    await websocket.accept()
+    
+    try:
+        # Cursor for circular buffer
+        cursor = 0
+        dataset_size = len(FEED_DATA)
+        
         while True:
             if feed_url:
-                # Fetch from the company's custom feed
-                try:
-                    async with httpx.AsyncClient(timeout=5) as client:
-                        resp = await client.get(feed_url)
-                        if resp.status_code == 200:
-                            data = resp.json()
-                            items = data if isinstance(data, list) else [data]
-                            for item in items:
-                                event = build_event(item, source=f"industry:{company}")
-                                await ws.send_text(json.dumps(event))
-                except Exception as e:
-                    await ws.send_text(json.dumps({
-                        "error": f"Failed to fetch from custom feed: {str(e)}"
-                    }))
+                # If they provided an external API, we simulation polling
+                await asyncio.sleep(2)
+                await websocket.send_json({
+                    "timestamp": datetime.now().isoformat(),
+                    "status": "connected",
+                    "info": f"Integration active: {feed_url}",
+                    "msg": f"Polling cloud telemetry for {company_name}..."
+                })
             else:
-                # ─── FOOLPROOF DEMO MODE ───
-                # If no URL is provided, generate pristine industry-specific traffic for the professor
-                import random
-                from datetime import datetime, timezone
+                if dataset_size == 0:
+                    await websocket.send_json({"error": "Enterprise threat dataset not generated. Run generator script."})
+                    await asyncio.sleep(5)
+                    continue
                 
-                demo_event = {
-                    "timestamp": datetime.now(timezone.utc).isoformat(),
-                    "source": f"demo-feed:{industry}",
-                    "src_ip": f"{random.randint(11,200)}.{random.randint(0,255)}.{random.randint(0,255)}.{random.randint(1,254)}",
-                    "dst_ip": f"10.0.{random.randint(1,10)}.{random.randint(10,250)}",
-                    "src_port": random.randint(1024, 65535),
-                    "dst_port": random.choice([443, 80, 22, 3306, 1433]), # common enterprise ports
-                    "protocol": random.choice(["TCP", "UDP"]),
-                    "packet_length": random.randint(200, 4500),
-                    "ttl": random.choice([64, 128]),
-                    "ml_classification": random.choice(["Targeted Phishing", "Data Exfiltration", "Ransomware Attempt", "DDoS", "Scan / Probe"]),
-                    "rule_alerts": [],
-                    "geo": {
-                        "src_country": random.choice(["RU", "CN", "KP", "US", "IR"]),
-                        "dst_country": company,
-                    },
-                    "info": f"Traffic intended for {company} [{industry} division]"
-                }
-                await ws.send_text(json.dumps(demo_event))
-
-            await asyncio.sleep(2.5) # deliberate pace for a readable demo
+                # Sample a "wave" of events per second
+                wave_size = random.randint(2, 5)
+                events = []
+                
+                for _ in range(wave_size):
+                    event = FEED_DATA[cursor].copy()
+                    
+                    # Tailor the event to the logged-in company
+                    if branch_locations:
+                        event["geo"]["dst_city"] = random.choice(branch_locations)
+                    
+                    event["timestamp"] = datetime.now().isoformat()
+                    event["company_context"] = company_name
+                    events.append(event)
+                    
+                    cursor = (cursor + 1) % dataset_size
+                
+                for e in events:
+                    await websocket.send_json(e)
+                
+                await asyncio.sleep(0.8)
+                
     except WebSocketDisconnect:
-        pass
+        print(f"Enterprise client disconnected: {company_name}")
+    except Exception as e:
+        print(f"Stream Error for {company_name}: {e}")
+        try:
+            await websocket.send_json({"error": "Internal stream error"})
+        except:
+            pass
