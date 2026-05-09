@@ -9,7 +9,7 @@ import {
 import { countryCoords } from "../utils/countryCoords";
 import { useGlobalStream } from "../store/GlobalStreamContext";
 
-// 110m json for world map
+// 110m json for world map — full globe view
 const geoUrl = "https://unpkg.com/world-atlas@2.0.2/countries-110m.json";
 
 const nameToIso = {
@@ -33,16 +33,7 @@ export default function MapChart({ events }) {
     const originating = srcCounts[iso2] || 0;
     const targeted = dstCounts[iso2] || 0;
     
-    // Position tooltip near the click
-    const rect = evt.target.getBoundingClientRect();
-    setTooltip({
-      name,
-      iso2,
-      originating,
-      targeted,
-      x: evt.clientX - rect.left + 20,
-      y: evt.clientY - rect.top + 20
-    });
+    setTooltip({ name, iso2, originating, targeted });
   };
 
   return (
@@ -54,9 +45,9 @@ export default function MapChart({ events }) {
         <div style={{
           position: "absolute",
           top: 10, right: 10,
-          background: "rgba(10,0,0,0.85)", border: "1px solid #ef4444", backdropFilter: "blur(4px)",
+          background: "rgba(10,0,0,0.92)", border: "1px solid #ef4444", backdropFilter: "blur(6px)",
           padding: "1rem", borderRadius: "6px", color: "#fff", zIndex: 100,
-          boxShadow: "0 4px 12px rgba(0,0,0,0.5)", width: "220px", display: "flex", flexDirection: "column", gap: "0.5rem"
+          boxShadow: "0 4px 20px rgba(239,68,68,0.25)", width: "220px", display: "flex", flexDirection: "column", gap: "0.5rem"
         }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span style={{ fontWeight: 600, fontSize: "0.9rem" }}>{tooltip.name} ({tooltip.iso2})</span>
@@ -71,24 +62,31 @@ export default function MapChart({ events }) {
         </div>
       )}
 
+      {/* Full world map — scale 145 for complete globe visibility */}
       <ComposableMap projectionConfig={{ scale: 145 }} width={800} height={400} style={{ width: "100%", height: "100%" }}>
         <Geographies geography={geoUrl}>
           {({ geographies }) =>
             geographies.map((geo) => {
-              const iso2 = geo.properties?.iso_a2 || geo.properties?.ISO_A2;
+              const name = geo.properties?.name || "";
+              const iso2 = geo.properties?.iso_a2 || geo.properties?.ISO_A2 || nameToIso[name];
               const hasActivity = (srcCounts[iso2] > 0) || (dstCounts[iso2] > 0);
+              
+              // Base fill: brighter so all countries are clearly visible
+              // Active countries get a subtle red glow, inactive get a dark charcoal
+              const baseFill = hasActivity ? "#3d0a0a" : "#1a1a24";
+              const baseStroke = hasActivity ? "#6b2020" : "#2a2a3a";
               
               return (
                 <Geography
                   key={geo.rsmKey}
                   geography={geo}
                   onClick={(e) => handleCountryClick(geo, e)}
-                  fill={hasActivity ? "#290000" : "#140000"} // slightly highlight active countries
-                  stroke="#370000"
+                  fill={baseFill}
+                  stroke={baseStroke}
                   strokeWidth={0.5}
                   style={{
                     default: { outline: "none", transition: "all 0.2s" },
-                    hover: { fill: "#450a0a", outline: "none", cursor: "pointer" },
+                    hover: { fill: "#5a1515", stroke: "#ef4444", strokeWidth: 0.8, outline: "none", cursor: "pointer" },
                     pressed: { fill: "#ef4444", outline: "none" },
                   }}
                 />

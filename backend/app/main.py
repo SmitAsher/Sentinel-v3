@@ -17,7 +17,6 @@ app = FastAPI(
     version="3.0.0",
 )
 
-# ─── CORS (allow the Vite dev server) ───
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # tighten in production
@@ -25,6 +24,14 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+@app.on_event("startup")
+def startup_event():
+    from app.db import init_db
+    from app.datasets.seed_companies import seed
+    init_db()
+    seed()
+
 
 # ─── Register Routers ───
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
