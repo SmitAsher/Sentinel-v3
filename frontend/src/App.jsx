@@ -1,6 +1,7 @@
 import { useState } from "react";
 import PublicDashboard from "./pages/PublicDashboard";
 import IndustryDashboard from "./pages/IndustryDashboard";
+import PipelineVisualizer from "./pages/PipelineVisualizer";
 import Login from "./pages/Auth/Login";
 import { GlobalStreamProvider } from "./store/GlobalStreamContext";
 import "./App.css";
@@ -32,6 +33,9 @@ export default function App() {
             <button className={page === "public" ? "active" : ""} onClick={() => setPage("public")}>
               Global Dashboard
             </button>
+            <button className={page === "pipeline" ? "active" : ""} onClick={() => setPage("pipeline")} style={{ color: "#4ade80", borderColor: page === "pipeline" ? "#4ade80" : "transparent" }}>
+              ⚡ Pipeline
+            </button>
             {token ? (
               <>
                 <button className={page === "industry" ? "active" : ""} onClick={() => setPage("industry")}>
@@ -48,10 +52,11 @@ export default function App() {
         </nav>
 
         {/* ─── Page Content ─── */}
-        <main className="main-content">
+        <main className={page === "pipeline" ? "" : "main-content"}>
           {page === "public"   && <PublicDashboard />}
           {page === "login"    && <Login onAuth={handleAuth} />}
           {page === "industry" && token && <IndustryDashboard token={token} />}
+          {page === "pipeline" && <PipelineVisualizer />}
         </main>
       </div>
     </GlobalStreamProvider>

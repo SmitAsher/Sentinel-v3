@@ -9,7 +9,7 @@ Lightweight SOC simulation engine.
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routers import auth, public_stream, industry_stream
+from app.api.routers import auth, public_stream, industry_stream, pipeline_demo
 
 app = FastAPI(
     title="Sentinel-v3 API",
@@ -37,6 +37,7 @@ def startup_event():
 app.include_router(auth.router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(public_stream.router, prefix="/api/stream", tags=["Public Stream"])
 app.include_router(industry_stream.router, prefix="/api/industry", tags=["Industry Stream"])
+app.include_router(pipeline_demo.router, prefix="/api/pipeline", tags=["Pipeline Demo"])
 
 
 @app.get("/")
